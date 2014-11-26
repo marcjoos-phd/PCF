@@ -39,7 +39,7 @@ class File:
         f.close()
 
     def _checkPrecision(self):
-        listPrec = ['d0', 'q0', '_sp', '_dp', '_qp']
+        listPrec = ['e0', 'd0', 'q0', '_dp']
         try:
             assert self.precision in listPrec
         except AssertionError:
@@ -54,16 +54,15 @@ class File:
         self._getSource()
         self.newlines = []
         edit = False
-        regex = re.compile(r'(\d*\.\d*)([^dq\_0-9])')
+        regex = re.compile(r'([^FfEeSsNnIi0-9])(\d+\.|\.\d+|\d+\.\d+)([^edq\_0-9])')
         for i, line in enumerate(self.lines):
             search = regex.findall(line)
             if search != []: 
                 edit = True
-                newline = regex.sub(r'\g<1>'+ self.precision + r'\g<2>', line)
+                newline = regex.sub(r'\g<2>'+ self.precision + r'\g<3>', line)
                 self.newlines.append(newline)
                 if self.verbose:
-                    print(bold + 'The line #%d:' + reset + '\n %s' \
-                              %(i,line[:-1]))
+                    print(bold + 'The line #%d:'%i + reset + '\n %s' %line[:-1])
                     print(bold + 'will be replace by:'+ reset)
                     print('%s' %newline[:-1])
             else:
@@ -124,7 +123,7 @@ class FileTree:
 
     def _removeTrailingDot(self, listDirs):
         cleanDirs = []
-        trailingDot = re.compile('\.\.\/')
+        trailingDot = re.compile(r'\.\.\/')
         for dir_ in listDirs:
             cleanDirs.append(trailingDot.sub('', dir_))
         return cleanDirs
@@ -135,16 +134,18 @@ class FileTree:
         npardir = self.tmpRoot.count('../')
         if npardir > 0:
             workDirRoot = "/".join(workDir.split('/')[:-npardir]) + '/'
-            print self._removeTrailingDot([self.tmpRoot])
             workDirRoot += self._removeTrailingDot([self.tmpRoot])[0]
         else:
             workDirRoot = workDir + '/' + self.tmpRoot
         for dir_ in self.tmpTree:
             try:
+                dir_ = (dir_[1:] if dir_[0] == "." else dir_)
                 os.makedirs(workDirRoot + dir_)
             except OSError:
                 pass
         for i, dir_ in enumerate(self.tmpTree):
+            dir_ = workDirRoot + (dir_[1:] if dir_[0] == "." else dir_)
+            self.tmpTree[i] = dir_
             for file_ in self.listFiles[i]:
                 shutil.copy(self.listDirs[i] + '/' + file_, dir_ + '/' + file_)
         
@@ -155,7 +156,7 @@ class FileTree:
                 ftc = File(dir_ + '/' + file_, precision=precision \
                                , verbose=verbose)
                 fwrite = ('tmp_' if tmpFile else '') + file_
-                if verbose: print("In file: " + file_)
+                if verbose: print(bold + "In file: " + reset + file_)
                 ftc.sourceConverter(dir_ + '/'  + fwrite)
         
 
@@ -166,7 +167,7 @@ def main():
     parser.add_argument("--precision=", "-P", dest="precision", type=str \
                             , default="d0", help="precision suffix; must be in ['d0', 'q0', '_sp', '_dp', '_qp']")
     parser.add_argument("--tmpdir=", "-t", dest="tmpdir", type=str \
-                            , default="./", help="If set, use the given path as a temporary directory to store and convert the source files")
+                            , default="./tmp", help="If set, use the given path as a temporary directory to store and convert the source files")
     parser.add_argument("--tmpfile", "-T", dest="tmpfile", action="store_true" \
                             , help="If set, write converted files in temporary files (starting with the prefix 'tmp_')")
     parser.add_argument("--verbose", "-v", dest="verbose", action="store_true" \
@@ -176,7 +177,7 @@ def main():
     tmpdir, tmpfile = args.tmpdir, args.tmpfile
     verbose         = args.verbose
 
-    listPrec = ['d0', 'q0', '_sp', '_dp', '_qp']
+    listPrec = ['e0', 'd0', 'q0', '_dp']
     try:
         assert precision in listPrec
     except AssertionError:
