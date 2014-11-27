@@ -54,9 +54,9 @@ class File:
         self._getSource()
         self.newlines = []
         edit = False
-        regexNotype = re.compile(r'([^FfEeSsNnIi0-9])(\d+\.|\.\d+|\d+\.\d+)([^edq\_0-9])')
-        regexType = re.compile(r'([^FfEeSsNnIi0-9])(\d+\.|\.\d+|\d+\.\d+|\d+)([edq])')
-        regexTypeWU = re.compile(r'([^FfEeSsNnIi0-9])(\d+\.|\.\d+|\d+\.\d+|\d+)(\_dp)')
+        regexNotype = re.compile(r'(?<=[^FfEeSsNnIi0-9])(\d+\.|\.\d+|\d+\.\d+)([^edq\_0-9])')
+        regexType = re.compile(r'(?<=[^FfEeSsNnIi0-9])(\d+\.|\.\d+|\d+\.\d+|\d+)([edq])')
+        regexTypeWU = re.compile(r'(?<=[^FfEeSsNnIi0-9])(\d+\.|\.\d+|\d+\.\d+|\d+)(\_dp)')
         for i, line in enumerate(self.lines):
             searchNT = regexNotype.findall(line)
             searchT = regexType.findall(line)
@@ -65,12 +65,12 @@ class File:
             oldline = line
             if searchNT != []: 
                 edit = True
-                newline = regexNotype.sub(r'\g<1>\g<2>'+ self.precision + r'\g<3>', line)
+                newline = regexNotype.sub(r'\g<1>'+ self.precision + r'\g<2>', line)
                 self.newlines.append(newline)
             if searchT != []:
                 edit = True
                 if newline != "": line = newline
-                newline = regexType.sub(r'\g<1>\g<2>' + self.precision[0], line)
+                newline = regexType.sub(r'\g<1>' + self.precision[0], line)
                 if len(self.newlines) == i+1:
                     self.newlines[i] = newline
                 else:
@@ -78,7 +78,7 @@ class File:
             if searchTWU != []:
                 edit = True
                 if newline != "": line = newline
-                newline = regexTypeWU.sub(r'\g<1>\g<2>' + self.precision, line)
+                newline = regexTypeWU.sub(r'\g<1>' + self.precision, line)
                 if len(self.newlines) == i+1:
                     self.newlines[i] = newline
                 else:
