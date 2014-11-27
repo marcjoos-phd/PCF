@@ -1,0 +1,36 @@
+This is PCF - Precision Converter for Fortran
+
+Copyrights 2014, CEA, Marc Joos<marc.joos@cea.fr>
+
+This software is distributed under the CeCILL-A & GNU/GPL licences (see <http://www.cecill.info/licences/Licence_CeCILL_V2.1-en.html> and <http://www.gnu.org/licenses/>)
+
+Thanks to Olivier Iffrig for his regex guru skills!
+
+PCF is a converter for precision consistency in Fortran. It appends to untyped real a suffix for the given precision, and change the precision of typed real in accordance with the given precision.
+
+1. INSTALLATION
+===============
+You can 
+~$ chmod +x convert.py
+to use directly as a command in your shell
+
+2. USAGE
+========
+usage: convert.py [-h] [--path= PATH] [--precision= PRECISION]
+                  [--tmpdir= TMPDIR] [--tmpfile] [--epic-run] [--verbose]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --path= PATH, -p PATH
+                        source directory. Default: current directory
+  --precision= PRECISION, -P PRECISION
+                        precision suffix; must be in ['e0', 'd0', 'q0'].
+                        Default: 'd0'
+  --tmpdir= TMPDIR, -t TMPDIR
+                        If set, use the given path as a temporary directory to
+                        store and convert the source files. Default: './tmp'
+  --tmpfile, -T         If set, write converted files in temporary files
+                        (starting with the prefix 'tmp_')
+  --epic-run, -e        If set, change the files directly without temporary
+                        directories and files.
+  --verbose, -v         verbose mode
