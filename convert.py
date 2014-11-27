@@ -13,9 +13,9 @@
 # <http://www.gnu.org/licenses/>
 # \date
 # \b created:          11-25-2014
-# \b last \b modified: 11-26-2014
+# \b last \b modified: 11-27-2014
 #===============================================================================
-import os, re, sys, shutil, argparse
+import os, re, sys, copy, shutil, argparse
 
 bold  = "\033[1m"
 reset = "\033[0;0m"
@@ -39,7 +39,7 @@ class File:
         f.close()
 
     def _checkPrecision(self):
-        listPrec = ['e0', 'd0', 'q0', '_dp']
+        listPrec = ['e0', 'd0', 'q0']
         try:
             assert self.precision in listPrec
         except AssertionError:
@@ -54,18 +54,41 @@ class File:
         self._getSource()
         self.newlines = []
         edit = False
-        regex = re.compile(r'([^FfEeSsNnIi0-9])(\d+\.|\.\d+|\d+\.\d+)([^edq\_0-9])')
+        regexNotype = re.compile(r'([^FfEeSsNnIi0-9])(\d+\.|\.\d+|\d+\.\d+)([^edq\_0-9])')
+        regexType = re.compile(r'([^FfEeSsNnIi0-9])(\d+\.|\.\d+|\d+\.\d+|\d+)([edq])')
+        regexTypeWU = re.compile(r'([^FfEeSsNnIi0-9])(\d+\.|\.\d+|\d+\.\d+|\d+)(\_dp)')
         for i, line in enumerate(self.lines):
-            search = regex.findall(line)
-            if search != []: 
+            searchNT = regexNotype.findall(line)
+            searchT = regexType.findall(line)
+            searchTWU = regexTypeWU.findall(line)
+            newline = ""
+            oldline = line
+            if searchNT != []: 
                 edit = True
-                newline = regex.sub(r'\g<2>'+ self.precision + r'\g<3>', line)
+                newline = regexNotype.sub(r'\g<1>\g<2>'+ self.precision + r'\g<3>', line)
                 self.newlines.append(newline)
-                if self.verbose:
-                    print(bold + 'The line #%d:'%i + reset + '\n %s' %line[:-1])
+            if searchT != []:
+                edit = True
+                if newline != "": line = newline
+                newline = regexType.sub(r'\g<1>\g<2>' + self.precision[0], line)
+                if len(self.newlines) == i+1:
+                    self.newlines[i] = newline
+                else:
+                    self.newlines.append(newline)
+            if searchTWU != []:
+                edit = True
+                if newline != "": line = newline
+                newline = regexTypeWU.sub(r'\g<1>\g<2>' + self.precision, line)
+                if len(self.newlines) == i+1:
+                    self.newlines[i] = newline
+                else:
+                    self.newlines.append(newline)
+            if self.verbose:
+                if searchNT != [] or searchT != [] or searchTWU != []:
+                    print(bold + 'The line #%d:'%i + reset + '\n %s' %oldline[:-1])
                     print(bold + 'will be replace by:'+ reset)
                     print('%s' %newline[:-1])
-            else:
+            if searchNT == [] and searchT == [] and searchTWU == []:
                 self.newlines.append(line)
         if not edit and self.verbose: print('Nothing to be done')
         self._writeSource(fwname)
@@ -88,6 +111,7 @@ class FileTree:
         self._cleanFiles()
 
     def _listFiles(self, root, files):
+        root = (root[:-1] if root[-1] == '/' else root)
         if root.split('/')[-1][0] != '.' or len(root.split('/')[-1]) == 1:
             if self._listIgnore:
                 for ignore in self._listIgnore:
@@ -161,29 +185,35 @@ class FileTree:
         
 
 def main():
-    parser = argparse.ArgumentParser(description="Precision Converter: a converter for precision consistency in Fortran")
+    parser = argparse.ArgumentParser(description="Precision Converter: a converter for precision consistency in Fortran. It appends to untyped real a suffix for the given precision, and change the precision of typed real in accordance with the given precision.")
     parser.add_argument("--path=", "-p", dest="path", type=str, default="./" \
-                            , help="source directory")
+                            , help="source directory. Default: current directory")
     parser.add_argument("--precision=", "-P", dest="precision", type=str \
-                            , default="d0", help="precision suffix; must be in ['d0', 'q0', '_sp', '_dp', '_qp']")
+                            , default="d0", help="precision suffix; must be in ['e0', 'd0', 'q0']. Default: 'd0'")
     parser.add_argument("--tmpdir=", "-t", dest="tmpdir", type=str \
-                            , default="./tmp", help="If set, use the given path as a temporary directory to store and convert the source files")
+                            , default="./tmp", help="If set, use the given path as a temporary directory to store and convert the source files. Default: './tmp'")
     parser.add_argument("--tmpfile", "-T", dest="tmpfile", action="store_true" \
                             , help="If set, write converted files in temporary files (starting with the prefix 'tmp_')")
+    parser.add_argument("--epic-run", "-e", dest="epic", action="store_true" \
+                            , help="If set, change the files directly without temporary directories and files.")
     parser.add_argument("--verbose", "-v", dest="verbose", action="store_true" \
                             , help="verbose mode")
     args = parser.parse_args()
     path, precision = args.path, args.precision
     tmpdir, tmpfile = args.tmpdir, args.tmpfile
-    verbose         = args.verbose
+    epic, verbose   = args.epic, args.verbose
 
-    listPrec = ['e0', 'd0', 'q0', '_dp']
+    listPrec = ['e0', 'd0', 'q0']
     try:
         assert precision in listPrec
     except AssertionError:
         print(bold + "Error:" + reset + \
         "The given precision has to be in [" + ", ".join(listPrec) + "]")
         sys.exit(0)
+
+    if epic:
+        tmpdir  = None
+        tmpfile = False
 
     tree = FileTree(path, tmpRoot=tmpdir)
     tree.listFiles()
